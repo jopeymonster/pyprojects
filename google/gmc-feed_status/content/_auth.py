@@ -46,7 +46,7 @@ def authorize(config):
                                      _constants.CLIENT_SECRETS_FILE)
   if os.path.isfile(service_account_path):
     print('Using service account credentials from local directory.')
-    # print('Using service account credentials from %s.' % service_account_path) - debug/verify
+    #print('Using service account credentials from %s.' % service_account_path)
     return service_account.Credentials.from_service_account_file(
         service_account_path,
         scopes=[_constants.CONTENT_API_SCOPE])

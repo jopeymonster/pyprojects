@@ -71,7 +71,7 @@ def main_menu(argv):
     output_choice = input("Enter your choice (1, 2, or 3): ")
     print("Configuring authorization and services...")
     service, config, _ = _common.init(argv, __doc__)
-    ids_file = os.path.join(config['config_path'], _constants.CONFIG_FILE)
+    ids_file = os.path.join(config['path'], _constants.CONFIG_FILE)
     merchant_ids = _common.read_merchant_ids(ids_file)
     if output_choice == '2':
         file_name = input("Enter desired file name now or leave empty for default (feed-report.csv): ").strip()

@@ -52,11 +52,12 @@ def init(argv, doc, parents=None, sandbox=False):
       help='filename for logging API requests and responses'
   )
   flags = parser.parse_args(argv[1:])
-  content_path = os.path.dirname(os.path.realpath(__file__))
+  base_dir = os.path.dirname(os.path.realpath(__file__))
+  auth_path = os.path.join(base_dir, _constants.AUTH_DIR)
   if flags.log_file:
     logging.basicConfig(filename=flags.log_file, level=logging.INFO)
     model.dump_request_response = True
-  config = {'path': content_path, 'config_path': flags.config_path}
+  config = {'path': auth_path, 'config_path': flags.config_path}
   if not flags.noconfig:
       if not os.path.isdir(flags.config_path):
           print(
@@ -64,13 +65,13 @@ def init(argv, doc, parents=None, sandbox=False):
               file=sys.stderr)
           sys.exit(1)
 
-      if not os.path.isdir(content_path):
+      if not os.path.isdir(auth_path):
           print(
               'Content API configuration directory "%s" does not exist.' %
-              content_path,
+              auth_path,
               file=sys.stderr)
           sys.exit(1)
-      config_file = os.path.join(content_path, _constants.CONFIG_FILE)
+      config_file = os.path.join(auth_path, _constants.CONFIG_FILE)
       if not os.path.isfile(config_file):
           print('Configuration file %s does not exist.' % config_file)
           print('Falling back to configuration based on authenticated user.')

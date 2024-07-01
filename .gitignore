@@ -1,5 +1,12 @@
 # gitignore for python projects
 
+# need to be udpated
+*-test
+*-JDT
+GSC-bulk_indexer/
+youtube/
+sendgrid-api/
+
 # auth folders
 authfiles/
 systools/

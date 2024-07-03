@@ -1,5 +1,4 @@
 # gmc-feed_status_update - Apr 23 2024, JDT
-# added tabulate output display
 
 # imports
 from __future__ import print_function

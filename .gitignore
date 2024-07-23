@@ -7,6 +7,9 @@ GSC-bulk_indexer/
 youtube/
 sendgrid/
 
+# WIP
+pymc/
+
 # auth folders
 authfiles/
 systools/

@@ -49,8 +49,7 @@ def init(argv, doc, parents=None, sandbox=False):
   parser.add_argument(
       '--log_file',
       metavar='FILE',
-      help='filename for logging API requests and responses'
-  )
+      help='filename for logging API requests and responses')
   flags = parser.parse_args(argv[1:])
   base_dir = os.path.dirname(os.path.realpath(__file__))
   auth_path = os.path.join(base_dir, _constants.AUTH_DIR)

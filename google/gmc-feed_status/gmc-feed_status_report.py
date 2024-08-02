@@ -214,7 +214,6 @@ def auto_exec(argv, main_flags, timestamp):
 @handle_exceptions
 def main(argv):
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    # argparse
     parser = argparse.ArgumentParser(
         description="Main function for handling report generation",
         formatter_class=argparse.RawDescriptionHelpFormatter
@@ -238,8 +237,6 @@ def main(argv):
         )
     )
     main_flags = parser.parse_args(argv[1:])
-    
-    # execs
     if main_flags.auto is None:
         std_exec(argv, timestamp)
     else:

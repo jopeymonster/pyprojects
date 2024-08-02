@@ -7,6 +7,7 @@ import os
 import time
 import csv
 import json
+import argparse
 from datetime import datetime
 import pathlib
 import requests
@@ -105,7 +106,13 @@ def get_datafeeds_and_statuses(service, merchant_id):
 
 def initialize_services(argv):
     print("Configuring authorization and services...")
-    service, config, _ = _common.init(argv, __doc__)
+    config_args = [
+        arg for arg in argv if 
+        arg.startswith('--config_path') 
+        or arg.startswith('--noconfig') 
+        or arg.startswith('--log_file')
+        ]
+    service, config, _ = _common.init(config_args, __doc__)
     ids_file = os.path.join(config['path'], _constants.CONFIG_FILE)
     merchant_ids = read_merchant_ids(ids_file)
     return service, merchant_ids
@@ -124,7 +131,6 @@ def analyze_feeds(service, merchant_ids, report_choice):
             total_items = int(total_items_str) if total_items_str not in ('N/A', None) else 0
             valid_items = int(valid_items_str) if valid_items_str not in ('N/A', None) else 0
             item_errors = total_items - valid_items
-
             if report_choice == 'list-errors':
                 if data_entry['processingStatus'] != 'success' or item_errors > 0:
                     all_data.append([prop_name, data_entry.get('name', 'N/A'), data_entry.get('datafeedId', 'N/A'),
@@ -186,13 +192,58 @@ def generate_report(all_data, report_choice, file_name, timestamp):
         print("Feed report complete - No feed errors reported!\n"
             f"Date and time of report request: {timestamp}\n")
 
-@handle_exceptions
-def main(argv):
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+def std_exec(argv, timestamp):
     report_choice, file_name = display_menu(timestamp)
     service, merchant_ids = initialize_services(argv)
     all_data = analyze_feeds(service, merchant_ids, report_choice)
     generate_report(all_data, report_choice, str(file_name), timestamp)
+
+def auto_exec(argv, main_flags, timestamp):
+    if main_flags.auto in ["list-errors", "display-all"]:
+        file_name = None
+    elif main_flags.auto == "save-file":
+        file_name = main_flags.file_name if main_flags.file_name else f"feed-report-{timestamp}.csv"
+    else:
+        print(f"Invalid argument input: {main_flags}\n"
+              "Please try again, use '--help' for more info.")
+        sys.exit(1)
+    service, merchant_ids = initialize_services(argv)
+    all_data = analyze_feeds(service, merchant_ids, main_flags.auto)
+    generate_report(all_data, main_flags.auto, str(file_name), timestamp) 
+
+@handle_exceptions
+def main(argv):
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    # argparse
+    parser = argparse.ArgumentParser(
+        description="Main function for handling report generation",
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        '--auto',
+        choices=['list-errors', 'save-file', 'display-all'],
+        help=(
+            "The type of automated report to generate:\n"
+            "list-errors': Run a status check and report all failed feed fetch attempts and item errors\n"
+            "save-file: Retrieve all properties feed data and save to CSV file (requires additional '--file_name' arg)\n"
+            "display-all: Output all feed data from all properties for review on screen"
+        )
+    )
+    parser.add_argument(
+        '--file_name',
+        metavar='FILE',
+        help=("Filename for saving the report (required for save-file option)\n"
+              "If a file_name is not provided when '--auto save-file' is used, the default will be assigned:\n"
+              f"Default file_name: feed-report-{timestamp}.csv"        
+        )
+    )
+    main_flags = parser.parse_args(argv[1:])
+    
+    # execs
+    if main_flags.auto is None:
+        std_exec(argv, timestamp)
+    else:
+        auto_exec(argv, main_flags, timestamp)
 
 if __name__ == '__main__':
     main(sys.argv)

@@ -6,6 +6,7 @@ import sys
 import os
 import time
 import csv
+import json
 from datetime import datetime
 import pathlib
 import requests
@@ -38,6 +39,47 @@ def handle_exceptions(func):
         print(f"\nError in function '{func_name}': {repr(error)} - Exiting...\n")
     return wrapper
 
+def display_menu(timestamp) -> str:
+    print("\n---- Initializing Google Merchant Center Feed Status Report by JDT ----\n\n"
+          "What report view would you like to see?\n"
+          "1. Run a status check and report all failed feed fetch attempts and item errors\n"
+          "2. Retrieve all properties feed data and save to CSV file\n"
+          "3. Output all feed data from all properties for review")
+    while True:
+        report_choice_input:str = input("Enter your choice (1, 2, or 3): ")
+        if report_choice_input == "2":
+            report_choice = "save-file"
+            file_name_input = input("Enter desired file name now or leave empty for default (feed-report-timestamp.csv): ").strip()
+            if not file_name_input:
+                file_name = f"feed-report-{timestamp}.csv"
+            else:
+                while True:
+                    timestamp_input = str(input("Would you like to include a timestamp? 'Y' or 'N': ")).lower()
+                    if timestamp_input == "y":
+                        file_name_with_timestamp = f"{file_name_input}-{timestamp}"
+                        file_name = pathlib.Path(file_name_with_timestamp).with_suffix('.csv')
+                        break
+                    elif timestamp_input == "n":
+                        file_name = pathlib.Path(file_name_input).with_suffix('.csv')
+                        break
+                    else:
+                        print("Option choice invalid. Please enter Y or N.")
+        elif report_choice_input in ["1","3"]:
+            file_name = None
+            if report_choice_input == "1":
+                report_choice = "list-errors"
+            elif report_choice_input == "3":
+                report_choice = "display-all"
+        else:
+            print("Option choice invalid. Please enter 1, 2, or 3.")
+            continue
+        return report_choice, file_name
+
+def read_merchant_ids(file_path):
+    with open(file_path, 'r') as file:
+        merchant_ids = json.load(file)
+    return merchant_ids
+
 def get_datafeeds_and_statuses(service, merchant_id):
     datafeeds_info = {}
     request_datafeeds = service.datafeeds().list(merchantId=merchant_id)
@@ -61,45 +103,14 @@ def get_datafeeds_and_statuses(service, merchant_id):
             })
     return datafeeds_info
 
-def display_menu(timestamp) -> str:
-    print("\n---- Initializing Google Merchant Center Feed Status Report by JDT ----\n\n"
-          "What report view would you like to see?\n"
-          "1. Run a status check and report all failed feed fetch attempts and item errors\n"
-          "2. Retrieve all properties feed data and save to CSV file\n"
-          "3. Output all feed data from all properties for review")
-    while True:
-        output_choice:str = input("Enter your choice (1, 2, or 3): ")
-        if output_choice == "2":
-            file_name_input = input("Enter desired file name now or leave empty for default (feed-report-timestamp.csv): ").strip()
-            if not file_name_input:
-                file_name = f"feed-report-{timestamp}.csv"
-            else:
-                while True:
-                    timestamp_input = str(input("Would you like to include a timestamp? 'Y' or 'N': ")).lower()
-                    if timestamp_input == "y":
-                        file_name_with_timestamp = f"{file_name_input}-{timestamp}"
-                        file_name = pathlib.Path(file_name_with_timestamp).with_suffix('.csv')
-                        break
-                    elif timestamp_input == "n":
-                        file_name = pathlib.Path(file_name_input).with_suffix('.csv')
-                        break
-                    else:
-                        print("Option choice invalid. Please enter Y or N.")
-        elif output_choice in ["1","3"]:
-            file_name = None
-        else:
-            print("Option choice invalid. Please enter 1, 2, or 3.")
-            continue
-        return output_choice, file_name
-
 def initialize_services(argv):
     print("Configuring authorization and services...")
     service, config, _ = _common.init(argv, __doc__)
     ids_file = os.path.join(config['path'], _constants.CONFIG_FILE)
-    merchant_ids = _common.read_merchant_ids(ids_file)
+    merchant_ids = read_merchant_ids(ids_file)
     return service, merchant_ids
 
-def analyze_feeds(service, merchant_ids, output_choice):
+def analyze_feeds(service, merchant_ids, report_choice):
     print("Analyzing feeds...")
     start_time = time.time()
     all_data = []
@@ -114,12 +125,12 @@ def analyze_feeds(service, merchant_ids, output_choice):
             valid_items = int(valid_items_str) if valid_items_str not in ('N/A', None) else 0
             item_errors = total_items - valid_items
 
-            if output_choice == '1':
+            if report_choice == 'list-errors':
                 if data_entry['processingStatus'] != 'success' or item_errors > 0:
                     all_data.append([prop_name, data_entry.get('name', 'N/A'), data_entry.get('datafeedId', 'N/A'),
                                      data_entry.get('processingStatus', 'N/A').upper(),
                                      item_errors if item_errors >= 0 else 'N/A'])
-            elif output_choice == '2':
+            elif report_choice == 'save-file':
                 row = [
                     prop_name,
                     data_entry.get('name', 'N/A'),
@@ -130,7 +141,7 @@ def analyze_feeds(service, merchant_ids, output_choice):
                     str(total_items) if 'itemsTotal' in data_entry else 'N/A',
                 ]
                 all_data.append(row)
-            elif output_choice == '3':
+            elif report_choice == 'display-all':
                 all_data.append([prop_name, 
                                  data_entry.get('name', 'N/A'), 
                                  data_entry.get('datafeedId', 'N/A'),
@@ -146,15 +157,15 @@ def analyze_feeds(service, merchant_ids, output_choice):
     print(f"Feeds analysis complete...\n{execution_time}.")
     return all_data
 
-def generate_report(all_data, output_choice, file_name, timestamp):
+def generate_report(all_data, report_choice, file_name, timestamp):
     path = os.getcwd()
     print("Generating report...")
     if all_data:
         headers = ["Property", "Feed Name", "Feed ID", "Status", "Item Errors"]
-        if output_choice in ['2', '3']:
+        if report_choice in ['save-file', 'display-all']:
             headers += ["Valid Items", "Total Items"]
         table_output = tabulate(all_data, headers=headers, tablefmt="simple_grid")
-        if output_choice == '2' and path is not None:
+        if report_choice == 'save-file' and path is not None:
             try:
                 with open(file_name, 'w', newline='', encoding='utf-8') as file:
                     writer = csv.writer(file)
@@ -164,10 +175,10 @@ def generate_report(all_data, output_choice, file_name, timestamp):
                       f"Date and time of report request: {timestamp}\n")
             except Exception as e:
                 print(f"Error saving to file: {e}")
-        elif output_choice == '3':
+        elif report_choice == 'display-all':
             pydoc.pager(table_output)
             print(f"Date and time of report request: {timestamp}\n")
-        elif output_choice == '1':
+        elif report_choice == 'list-errors':
             print(table_output)
             print("Feed report complete - Feed errors listed above\n"
                 f"Date and time of report request: {timestamp}\n")
@@ -178,10 +189,10 @@ def generate_report(all_data, output_choice, file_name, timestamp):
 @handle_exceptions
 def main(argv):
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    output_choice, file_name = display_menu(timestamp)
+    report_choice, file_name = display_menu(timestamp)
     service, merchant_ids = initialize_services(argv)
-    all_data = analyze_feeds(service, merchant_ids, output_choice)
-    generate_report(all_data, output_choice, str(file_name), timestamp)
+    all_data = analyze_feeds(service, merchant_ids, report_choice)
+    generate_report(all_data, report_choice, str(file_name), timestamp)
 
 if __name__ == '__main__':
     main(sys.argv)

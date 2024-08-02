@@ -20,11 +20,6 @@ from googleapiclient import model
 from . import _constants
 from . import _auth
 
-def read_merchant_ids(file_path):
-    with open(file_path, 'r') as file:
-        merchant_ids = json.load(file)
-    return merchant_ids
-
 def init(argv, doc, parents=None, sandbox=False):
   service = None
   sandbox_service = None

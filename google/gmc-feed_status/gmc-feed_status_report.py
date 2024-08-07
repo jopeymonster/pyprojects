@@ -1,4 +1,4 @@
-# gmc-feed_status_update - Apr 23 2024, JDT
+
 
 # imports
 from __future__ import print_function
@@ -215,26 +215,27 @@ def auto_exec(argv, main_flags, timestamp):
 def main(argv):
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     parser = argparse.ArgumentParser(
-        description="Main function for handling report generation",
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        prog="EXEC",
+        description=("Google Merchant Feed Center Reporter\n"
+                     "A tool that will fetch the status of any feeds based on account data found within the configuration file.\n"
+                     "See README for configuration and authentication file setup."),
+        epilog=("Automation enabler argument: '--auto' \n"
+                "Automation options: 'list-errors', 'save-file', 'display-all'\n"),
+        formatter_class=argparse.RawTextHelpFormatter
     )
     parser.add_argument(
         '--auto',
         choices=['list-errors', 'save-file', 'display-all'],
-        help=(
-            "The type of automated report to generate:\n"
-            "list-errors': Run a status check and report all failed feed fetch attempts and item errors\n"
-            "save-file: Retrieve all properties feed data and save to CSV file (requires additional '--file_name' arg)\n"
-            "display-all: Output all feed data from all properties for review on screen"
-        )
+        help=("list-errors = Run a status check and report all failed feed fetch attempts and item errors\n"
+              "save-file = Retrieve all properties feed data and save to CSV file (requires additional '--file_name arg')\n"
+              "display-all = Output all feed data from all properties for review on screen")
     )
     parser.add_argument(
         '--file_name',
-        metavar='FILE',
-        help=("Filename for saving the report (required for save-file option)\n"
-              "If a file_name is not provided when '--auto save-file' is used, the default will be assigned:\n"
-              f"Default file_name: feed-report-{timestamp}.csv"        
-        )
+        metavar='NAME',
+        help=("Filename for saving the report (required for save-file option)"
+              "\nIf a file_name is not provided when '--auto save-file' is used, the default will be assigned."
+              f"\nDefault file_name: feed-report-{timestamp}.csv")
     )
     main_flags = parser.parse_args(argv[1:])
     if main_flags.auto is None:
